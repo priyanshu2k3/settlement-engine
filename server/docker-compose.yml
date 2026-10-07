@@ -1,0 +1,40 @@
+services:
+  # 1. Your Node.js App (where BullMQ code actually runs)
+  # api:
+  #   build: .
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=postgres://postgres:secretpass@db:5432/myapp_db
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   depends_on:
+  #     - db
+  #     - redis
+
+  # 2. PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:${POSTGRES_PORT}" # Optional: allows you to connect via pgAdmin/DBeaver from your desktop
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - pg_data:/var/lib/postgresql/data
+      
+
+  # 3. Redis Server (Used by BullMQ for queue management)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379" # Optional: allows you to inspect queues using Redis Insight
+    volumes:
+      - redis_data:/data
+
+# Global volume declarations to keep your data safe when containers restart
+volumes:
+  pg_data:
+  redis_data:
