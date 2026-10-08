@@ -12,7 +12,8 @@ CREATE TABLE wallets (
 CREATE TABLE products (
     id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
-    stock_quantity INT NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0)
+    stock_quantity INT NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    price_cents INT NOT NULL DEFAULT 0 CHECK (price_cents >= 0)
 );
 
 CREATE TABLE orders (
@@ -20,6 +21,7 @@ CREATE TABLE orders (
     user_id BIGINT NOT NULL REFERENCES users (id),
     product_id BIGINT NOT NULL REFERENCES products (id),
     status TEXT NOT NULL,
+    quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
     idempotency_key TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -3,8 +3,13 @@ import { PORT } from "./config.js";
 export const app: Express = express();
 import { Checkout } from "./db/query/queryCheckout.js";
 import database from "./db/Database.js";
+import { testingFunction } from "./queue/queue.js";
 
 app.use(express.json());
+app.get('/', (req, res) => {
+  testingFunction();
+res.json({message:"server is working "})
+});
 
 app.post("/api/orders/checkout",async (req,res)=>{
   const {userId, productId, quantity} =req.body; 

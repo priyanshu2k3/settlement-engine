@@ -33,10 +33,14 @@ interface ProductRow {
 }
 
 interface WalletRow {
-  id: number;
+  user_id: number;
   balance_cents: number;
 }
 
+// function freezeApp(ms:number) {
+//   const buffer = new Int32Array(new SharedArrayBuffer(4));
+//   Atomics.wait(buffer, 0, 0, ms);
+// }freezeApp(2000);
 export async function Checkout(
   client: PoolClient,
   { userId, productId, quantity }: CheckoutParams,
@@ -72,7 +76,7 @@ export async function Checkout(
 
     // 2. Fetch & lock the user's wallet 
     const walletResult = await client.query(
-      `SELECT id, balance_cents 
+      `SELECT user_id, balance_cents 
        FROM wallets 
        WHERE user_id = $1 
        FOR UPDATE`,
@@ -100,8 +104,7 @@ export async function Checkout(
     // 3. Decrement inventory
     await client.query(
       `UPDATE products 
-       SET stock_quantity = stock_quantity - $1, 
-           updated_at = NOW() 
+       SET stock_quantity = stock_quantity - $1 
        WHERE id = $2`,
       [quantity, product.id]
     );
@@ -109,19 +112,19 @@ export async function Checkout(
     // 4. Debit wallet
     await client.query(
       `UPDATE wallets 
-       SET balance_cents = balance_cents - $1, 
-           updated_at = NOW() 
-       WHERE id = $2`,
-      [totalCost, wallet.id]
+       SET balance_cents = balance_cents - $1 
+       WHERE user_id = $2`,
+      [totalCost, wallet.user_id]
     );
 
     // 5. Create order record
-    const orderResult = await client.query(
-      `INSERT INTO orders (user_id, product_id, quantity, total_cents, status) 
-       VALUES ($1, $2, $3, $4, 'COMPLETED') 
-       RETURNING id`,
-      [userId, product.id, quantity, totalCost]
-    );
+    const idempotency_key= crypto.randomUUID();
+ const orderResult = await client.query(
+  `INSERT INTO orders (user_id, product_id, status, quantity, idempotency_key) 
+   VALUES ($1, $2, 'COMPLETED', $3, $4) 
+   RETURNING id`,
+  [userId, product.id, quantity, idempotency_key]
+);
     const order = orderResult.rows[0] as { id: number } | undefined;
     if (!order) {
       throw new Error('Order insert did not return an id');
@@ -130,16 +133,16 @@ export async function Checkout(
 
     // 6. Record balancing ledger entry (Double-entry / audit trail)
     await client.query(
-      `INSERT INTO ledger_entries (wallet_id, order_id, amount_cents, entry_type, description) 
-       VALUES ($1, $2, $3, 'DEBIT', 'Purchase for order ' || $2)`,
-      [wallet.id, orderId, totalCost]
+      `INSERT INTO ledger_entries ( order_id,wallet_id, amount_cents, entry_type) 
+       VALUES ($1, $2, $3, 'DEBIT')`,
+      [orderId, wallet.user_id, totalCost]
     );
 
     // 7. Commit transaction
     await client.query('COMMIT');
 
     return {
-      status: 200,
+      status: 201,
       data: {
         orderId,
         debitedCents: totalCost,

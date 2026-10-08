@@ -12,7 +12,7 @@ class Database {
       database: process.env.POSTGRES_DB,
       password: process.env.POSTGRES_PASSWORD,
       port: Number(process.env.POSTGRES_PORT),
-      max: 10,
+      max: 1,
     });
 
     this.#initializeListeners();
