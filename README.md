@@ -28,4 +28,4 @@ cd server && npm install && npm run build && npm start
 cd server && npm run worker
 ```
 
-The API exposes `GET /health` for a liveness check and `GET /metrics` for request latency percentiles, database pool statistics, and Redis memory usage.
+The API exposes `GET /health` for a liveness check 
