@@ -27,6 +27,7 @@ export const worker = new Worker<OrderPayload>(
 );
 
 worker.on("failed", async (job, error) => {
+  console.log(job ,error);
   if (!job || job.attemptsMade < (job.opts.attempts ?? 1)) return;
   await orderDlq.add("failed-order", {
     ...job.data,

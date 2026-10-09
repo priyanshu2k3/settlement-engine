@@ -1,40 +1,56 @@
 services:
-  # 1. Your Node.js App (where BullMQ code actually runs)
-  # api:
-  #   build: .
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - DATABASE_URL=postgres://postgres:secretpass@db:5432/myapp_db
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #   depends_on:
-  #     - db
-  #     - redis
+  api:
+    build: .
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+    ports:
+      - "${SERVER_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
-  # 2. PostgreSQL Database
+  worker:
+    build: .
+    command: ["node", "dist/worker.js"]
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
   db:
     image: postgres:16-alpine
+    env_file: .env
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:${POSTGRES_PORT}" # Optional: allows you to connect via pgAdmin/DBeaver from your desktop
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
       - pg_data:/var/lib/postgresql/data
-      
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  # 3. Redis Server (Used by BullMQ for queue management)
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379" # Optional: allows you to inspect queues using Redis Insight
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
 
-# Global volume declarations to keep your data safe when containers restart
 volumes:
   pg_data:
   redis_data:

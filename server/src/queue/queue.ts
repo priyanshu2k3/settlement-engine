@@ -1,9 +1,10 @@
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
+import { REDIS_HOST, REDIS_PORT } from "../config.js";
 
 export const redis = new Redis({
-  host: process.env.REDIS_HOST ?? "localhost",
-  port: Number(process.env.REDIS_PORT ?? 6379),
+  host: REDIS_HOST,
+  port: REDIS_PORT,
   maxRetriesPerRequest: null,
 });
 

@@ -1,17 +1,18 @@
 import { Pool } from 'pg';
 import type {  PoolClient, QueryResult } from 'pg';
-import 'dotenv/config';
+import "../config.js";
+import { POSTGRES_DB, POSTGRES_HOST, POSTGRES_PASSWORD, POSTGRES_PORT, POSTGRES_USER } from "../config.js";
 
 class Database {
   #pool: Pool;
 
   constructor() {
     this.#pool = new Pool({
-      user: process.env.POSTGRES_USER,
-      host: process.env.POSTGRES_HOST,
-      database: process.env.POSTGRES_DB,
-      password: process.env.POSTGRES_PASSWORD,
-      port: Number(process.env.POSTGRES_PORT),
+      user: POSTGRES_USER,
+      host: POSTGRES_HOST,
+      database: POSTGRES_DB,
+      password: POSTGRES_PASSWORD,
+      port: POSTGRES_PORT,
       max: 1,
     });
 
@@ -55,6 +56,15 @@ class Database {
   async close(): Promise<void> {
     console.log('Closing database connection pool...');
     await this.#pool.end();
+  }
+
+  poolStats() {
+    return {
+      total: this.#pool.totalCount,
+      idle: this.#pool.idleCount,
+      waiting: this.#pool.waitingCount,
+      max: this.#pool.options.max ?? 10,
+    };
   }
 }
 
