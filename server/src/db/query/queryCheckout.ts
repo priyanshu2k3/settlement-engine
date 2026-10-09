@@ -13,6 +13,7 @@ interface CheckoutParams {
   userId: string;
   productId: string;
   quantity: number;
+  idempotencyKey: string;
 }
 
 interface CheckoutResult {
@@ -43,7 +44,7 @@ interface WalletRow {
 // }freezeApp(2000);
 export async function Checkout(
   client: PoolClient,
-  { userId, productId, quantity }: CheckoutParams,
+  { userId, productId, quantity, idempotencyKey }: CheckoutParams,
 ): Promise<CheckoutResult> {
   try {
     await client.query('BEGIN');
@@ -118,12 +119,11 @@ export async function Checkout(
     );
 
     // 5. Create order record
-    const idempotency_key= crypto.randomUUID();
  const orderResult = await client.query(
   `INSERT INTO orders (user_id, product_id, status, quantity, idempotency_key) 
    VALUES ($1, $2, 'COMPLETED', $3, $4) 
    RETURNING id`,
-  [userId, product.id, quantity, idempotency_key]
+  [userId, product.id, quantity, idempotencyKey]
 );
     const order = orderResult.rows[0] as { id: number } | undefined;
     if (!order) {
